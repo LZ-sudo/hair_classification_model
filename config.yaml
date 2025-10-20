@@ -1,5 +1,5 @@
 # Model
-model_name: "deit_small_patch16_224"
+model_name: "deit_base_patch16_224"
 num_classes: 3
 dropout: 0.3
 
@@ -7,7 +7,7 @@ dropout: 0.3
 input_dir: "./input_pictures_processed"
 data_dir: "./data"
 img_size: 224
-batch_size: 32
+batch_size: 16
 num_workers: 4
 
 # Data splits
@@ -17,10 +17,13 @@ test_split: 0.15
 random_seed: 42
 
 # Training
-epochs: 80  # CHANGED: More epochs
-learning_rate: 0.0001
+epochs: 100  # CHANGED: More epochs
+learning_rate: 0.00005
 weight_decay: 0.01
-freeze_epochs: 5
+freeze_epochs: 15
+
+# Testing
+test_model: "best_model.pth"
 
 # Class imbalance handling - NEW
 use_class_weights: true        # Use weighted loss

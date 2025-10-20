@@ -18,7 +18,11 @@ def main():
     
     # Load model
     print("Loading model...")
-    model = load_model(f"{config['checkpoint_dir']}/best_model.pth", config['num_classes'])
+    model = load_model(
+        f"{config['checkpoint_dir']}/{config['test_model']}",
+        num_classes=config['num_classes'],
+        model_name=config['model_name']
+    )
     model = model.to(device)
     model.eval()
     
