@@ -1,0 +1,46 @@
+# Model
+model_name: "deit_small_patch16_224"
+num_classes: 3
+dropout: 0.3
+
+# Data
+input_dir: "./input_pictures_processed"
+data_dir: "./data"
+img_size: 224
+batch_size: 32
+num_workers: 4
+
+# Data splits
+train_split: 0.7
+val_split: 0.15
+test_split: 0.15
+random_seed: 42
+
+# Training
+epochs: 80  # CHANGED: More epochs
+learning_rate: 0.0001
+weight_decay: 0.01
+freeze_epochs: 5
+
+# Class imbalance handling - NEW
+use_class_weights: true        # Use weighted loss
+use_balanced_sampling: false   # Alternative to class weights (pick one)
+
+# Advanced augmentation - NEW
+use_mixup: true
+mixup_alpha: 0.2
+use_cutmix: true
+cutmix_alpha: 1.0
+
+# Test-time augmentation - NEW
+use_tta: true
+tta_augmentations: 5
+
+# Augmentation
+aug_hflip: 0.5
+aug_rotate: 15
+aug_brightness: 0.5
+
+# Checkpoints
+checkpoint_dir: "./checkpoints"
+save_best_only: true
