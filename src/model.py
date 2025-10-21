@@ -29,14 +29,6 @@ class HairClassifier(nn.Module):
                     nn.Dropout(dropout),
                     nn.Linear(in_features, num_classes)
                 )
-        elif 'swin' in model_name.lower():
-            # Swin has 'head' as Linear layer
-            if hasattr(self.model, 'head'):
-                in_features = self.model.head.in_features
-                self.model.head = nn.Sequential(
-                    nn.Dropout(dropout),
-                    nn.Linear(in_features, num_classes)
-                )
     
     def forward(self, x):
         return self.model(x)
