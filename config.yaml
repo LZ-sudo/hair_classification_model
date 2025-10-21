@@ -1,13 +1,13 @@
 # Model
-model_name: "deit_base_patch16_224"
+model_name: "convnext_tiny" # deit_base_patch16_224, deit3_base_patch16_224, #convnext_tiny
 num_classes: 3
-dropout: 0.3
+dropout: 0.2
 
 # Data
 input_dir: "./input_pictures_processed"
 data_dir: "./data"
 img_size: 224
-batch_size: 16
+batch_size: 24
 num_workers: 4
 
 # Data splits
@@ -17,10 +17,10 @@ test_split: 0.15
 random_seed: 42
 
 # Training
-epochs: 100  # CHANGED: More epochs
-learning_rate: 0.00005
+epochs: 80  # CHANGED: More epochs
+learning_rate: 0.00008
 weight_decay: 0.01
-freeze_epochs: 15
+freeze_epochs: 10
 
 # Testing
 test_model: "best_model.pth"
