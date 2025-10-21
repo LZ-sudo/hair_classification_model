@@ -1,7 +1,7 @@
 # Model
 model_name: "convnext_tiny_in22k" # deit_base_patch16_224, deit3_base_patch16_224, convnext_tiny, convnext_tiny_in22k
 num_classes: 3
-dropout: 0.15 #0.15 for convnext_tiny_in22k
+dropout: 0.15 # 0.15 for convnext_tiny_in22k, # 0.20 for convnext_tiny
 
 # Data
 input_dir: "./input_pictures_processed"
@@ -23,19 +23,19 @@ weight_decay: 0.01
 freeze_epochs: 12
 
 # Testing
-test_model: "best_model.pth"
+test_model: "best_model.pth" # change weight file name, weights must be inside checkpoints/  
 
-# Class imbalance handling - NEW
+# Class imbalance handling 
 use_class_weights: true        # Use weighted loss
 use_balanced_sampling: false   # Alternative to class weights (pick one)
 
-# Advanced augmentation - NEW
+# Advanced augmentation 
 use_mixup: true
 mixup_alpha: 0.2
 use_cutmix: true
 cutmix_alpha: 1.0
 
-# Test-time augmentation - NEW
+# Test-time augmentation 
 use_tta: true
 tta_augmentations: 5
 

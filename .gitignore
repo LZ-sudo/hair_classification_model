@@ -1,5 +1,6 @@
 /data
 /input_pictures_processed
+/irl_pictures_test_processed
 /myenv
 /src/__pycache__
 /checkpoints
