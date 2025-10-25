@@ -1,16 +1,38 @@
 """
 Hair Color Classification with ConvNeXt-Tiny
+Classifies hair color (black/brown/blonde/etc.)
+
+Model paths are read from config.yaml by default, but can be overridden via command-line arguments.
+
 Usage:
-    python classify_image_convnext_hair_color.py --image path/to/image.jpg --checkpoint checkpoints_hair_color/best_model.pth
-    python classify_image_convnext_hair_color.py --folder path/to/folder/ --checkpoint checkpoints_hair_color/best_model.pth
+    # Simple usage (reads from config.yaml)
+    python classify_image_convnext_hair_color.py --image path/to/image.jpg
+    python classify_image_convnext_hair_color.py --folder path/to/folder/
+    
+    # Override config with command-line arguments
+    python classify_image_convnext_hair_color.py \
+        --image path/to/image.jpg \
+        --checkpoint checkpoints_hair_color/best_model.pth \
+        --data-dir ./data_hair_color
 """
 
 import argparse
 import torch
 import os
+import yaml
 from src.model import load_model
 from src.predict import HairPredictor
 from src.dataset import get_class_names
+
+def load_config():
+    """Load configuration from config.yaml"""
+    try:
+        with open('config.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+        return config
+    except FileNotFoundError:
+        print("Warning: config.yaml not found. You must provide all arguments via command line.")
+        return None
 
 def classify_single_image(image_path, checkpoint_path, data_dir):
     """Classify a single hair image for color"""
@@ -100,25 +122,50 @@ def classify_folder(folder_path, checkpoint_path, data_dir):
     return results
 
 def main():
-    parser = argparse.ArgumentParser(description='Hair Color Classification with ConvNeXt')
+    # Load config first to get defaults
+    config = load_config()
+    
+    # Set defaults from config if available
+    if config and 'hair_color_classification' in config:
+        default_checkpoint = config['hair_color_classification'].get('checkpoint', None)
+        default_data_dir = config['hair_color_classification'].get('data_dir', './data_hair_color')
+    else:
+        default_checkpoint = None
+        default_data_dir = './data_hair_color'
+    
+    parser = argparse.ArgumentParser(
+        description='Hair Color Classification with ConvNeXt',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Simple usage (reads from config.yaml)
+  python classify_image_convnext_hair_color.py --image test.jpg
+  python classify_image_convnext_hair_color.py --folder test_images/
+  
+  # Override config values
+  python classify_image_convnext_hair_color.py --image test.jpg \\
+      --checkpoint checkpoints_hair_color/best_model.pth \\
+      --data-dir ./data_hair_color
+
+Configuration:
+  Model paths are read from config.yaml by default.
+  Edit the 'hair_color_classification' section in config.yaml to set default paths.
+        """
+    )
+    
+    # Input options
     parser.add_argument('--image', type=str, help='Path to single image')
     parser.add_argument('--folder', type=str, help='Path to folder of images')
-    parser.add_argument('--checkpoint', type=str, required=True, help='Path to model checkpoint')
-    parser.add_argument('--data-dir', type=str, default='./data_hair_color',
-                       help='Data directory to infer classes from (default: ./data_hair_color)')
+    
+    # Model checkpoint (optional if set in config)
+    parser.add_argument('--checkpoint', type=str, default=default_checkpoint,
+                       help=f'Path to hair color model checkpoint (default from config: {default_checkpoint})')
+    
+    # Data directory (optional if set in config)
+    parser.add_argument('--data-dir', type=str, default=default_data_dir,
+                       help=f'Data directory for hair color classes (default: {default_data_dir})')
     
     args = parser.parse_args()
-    
-    # Check that checkpoint exists
-    if not os.path.exists(args.checkpoint):
-        print(f"Error: Checkpoint not found: {args.checkpoint}")
-        return
-    
-    # Check that data directory exists
-    if not os.path.exists(args.data_dir):
-        print(f"Error: Data directory not found: {args.data_dir}")
-        print(f"Please ensure the data directory exists to infer class names.")
-        return
     
     # Validate input
     if args.image and args.folder:
@@ -128,6 +175,29 @@ def main():
     if not args.image and not args.folder:
         print("Error: Please specify either --image or --folder")
         return
+    
+    # Check that checkpoint is specified
+    if not args.checkpoint:
+        print("Error: Hair color checkpoint not specified. Either:")
+        print("  1. Set 'hair_color_classification.checkpoint' in config.yaml, or")
+        print("  2. Provide --checkpoint argument")
+        return
+    
+    # Check that checkpoint exists
+    if not os.path.exists(args.checkpoint):
+        print(f"Error: Hair color checkpoint not found: {args.checkpoint}")
+        return
+    
+    # Check that data directory exists
+    if not os.path.exists(args.data_dir):
+        print(f"Error: Hair color data directory not found: {args.data_dir}")
+        return
+    
+    # Display configuration
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    print(f"Checkpoint: {args.checkpoint}")
+    print(f"Data directory: {args.data_dir}")
     
     # Classify
     if args.image:

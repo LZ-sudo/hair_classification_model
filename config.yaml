@@ -2,14 +2,14 @@
 # Switch between different classification tasks by changing these paths
 
 # FOR HAIR TYPE CLASSIFICATION:
-# data_dir: './data_hair_type'              # Training data location
-# checkpoint_dir: './checkpoints_hair_type'  # Where to save model weights
-# input_dir: './input_pictures_hair_type'    # Raw images (for prepare_data.py)
+data_dir: './data_hair_type'              # Training data location
+checkpoint_dir: './checkpoints_hair_type'  # Where to save model weights
+input_dir: './input_pictures_hair_type'    # Raw images (for prepare_data.py)
 
 # FOR HAIR COLOR CLASSIFICATION (uncomment to use):
-data_dir: './data_hair_color'
-checkpoint_dir: './checkpoints_hair_color'
-input_dir: './input_pictures_hair_color'
+# data_dir: './data_hair_color'
+# checkpoint_dir: './checkpoints_hair_color'
+# input_dir: './input_pictures_hair_color'
 
 # NOTE: Classes are automatically detected from subdirectories in data_dir!
 # For example:
@@ -19,12 +19,12 @@ input_dir: './input_pictures_hair_color'
 # ==================== MODEL SETTINGS ====================
 model_name: "convnext_tiny.fb_in22k"  # Options: deit_base_patch16_224, deit3_base_patch16_224, 
                                     #          convnext_tiny, convnext_tiny.fb_in22k
-dropout: 0.2                        # Dropout rate for classifier head
+dropout: 0.15                       # Dropout rate for classifier head
 img_size: 224                       # Input image size
 
 # ==================== TRAINING SETTINGS ====================
 epochs: 80                          # Total training epochs
-freeze_epochs: 10                   # Epochs to freeze backbone (transfer learning)
+freeze_epochs: 12                   # Epochs to freeze backbone (transfer learning)
 learning_rate: 0.00005              # Learning rate (5e-5)
 weight_decay: 0.01                  # Weight decay for regularization
 batch_size: 24                      # Batch size
@@ -60,3 +60,28 @@ use_balanced_sampling: false        # Alternative: balance sampling instead of l
 test_model: "best_model.pth"        # Checkpoint filename to evaluate
 use_tta: true                       # Test-Time Augmentation
 tta_augmentations: 5                # Number of TTA augmentations
+
+# ==================== COMBINED CLASSIFICATION ====================
+# Settings for classify_image_convnext.py (both type + color prediction)
+
+classification:
+  # Hair type model
+  checkpoint_type: './checkpoints_hair_type/best_model_convnext_tiny_in22k_94.44.pth'
+  data_dir_type: './data_hair_type'
+  
+  # Hair color model
+  checkpoint_color: './checkpoints_hair_color/best_model_convnext_tiny_in22k_96.44.pth'
+  data_dir_color: './data_hair_color'
+
+# ==================== SINGLE TASK CLASSIFICATION ====================
+# Settings for individual classification scripts
+
+# Hair type only (classify_image_convnext_hair_type.py)
+hair_type_classification:
+  checkpoint: './checkpoints_hair_type/best_model_convnext_tiny_in22k_94.95.pth'
+  data_dir: './data_hair_type'
+
+# Hair color only (classify_image_convnext_hair_color.py)
+hair_color_classification:
+  checkpoint: './checkpoints_hair_color/best_model_convnext_tiny_in22k_96.44.pth'
+  data_dir: './data_hair_color'
