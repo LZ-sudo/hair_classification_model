@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--image', type=str, help='Path to single image')
     parser.add_argument('--folder', type=str, help='Path to folder of images')
     parser.add_argument('--checkpoint', type=str, 
-                       default='checkpoints_convnext/best_model.pth',
+                       default='checkpoints_hair_type/best_model.pth',
                        help='Path to ConvNeXt-Tiny checkpoint')
     args = parser.parse_args()
     

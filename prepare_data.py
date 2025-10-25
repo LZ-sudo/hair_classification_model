@@ -24,7 +24,6 @@ def main():
     # Check if input directory exists
     if not os.path.exists(input_dir):
         print(f"Error: Input directory '{input_dir}' does not exist!")
-        print(f"Please create it with subdirectories: straight/, wavy/, curly/")
         return
     
     # Check if data directory already exists
