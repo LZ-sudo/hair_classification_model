@@ -5,7 +5,7 @@ import torch.nn as nn
 import timm
 
 class HairClassifier(nn.Module):
-    def __init__(self, model_name='deit_small_patch16_224', num_classes=3, dropout=0.3, pretrained=True):
+    def __init__(self, model_name='convnext_tiny_in22k', num_classes=3, dropout=0.3, pretrained=True):
         super().__init__()
         
         # Load pretrained model
@@ -64,7 +64,7 @@ def load_model(checkpoint_path, num_classes=3, model_name=None):
     if model_name is None:
         # You might need to save model_name in checkpoint for full flexibility
         # For now, we'll use a default
-        model_name = 'deit_small_patch16_224'
+        model_name = 'convnext_tiny_in22k'
     
     model = HairClassifier(model_name=model_name, num_classes=num_classes, pretrained=False)
     model.load_state_dict(checkpoint['model_state_dict'])

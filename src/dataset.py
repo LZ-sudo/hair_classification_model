@@ -1,5 +1,3 @@
-"""Dataset and augmentation for hair classification"""
-
 import os
 import torch
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
@@ -14,14 +12,18 @@ from tqdm import tqdm
 class HairDataset(Dataset):
     def __init__(self, data_dir, split='train', transform=None):
         """
+        Dataset that automatically detects classes from subdirectories
+        
         Args:
-            data_dir: Root directory (e.g., './data')
+            data_dir: Root directory (e.g., './data_hair_type' or './data_hair_color')
             split: 'train', 'val', or 'test'
             transform: Albumentations transform
         """
         self.data_dir = os.path.join(data_dir, split)
         self.transform = transform
-        self.classes = ['straight', 'wavy', 'curly']
+        
+        # Automatically detect classes from subdirectories
+        self.classes = self._detect_classes()
         
         # Load all image paths and labels
         self.samples = []
@@ -34,6 +36,22 @@ class HairDataset(Dataset):
                 if img_name.lower().endswith(('.png', '.jpg', '.jpeg')):
                     img_path = os.path.join(class_dir, img_name)
                     self.samples.append((img_path, class_idx))
+    
+    def _detect_classes(self):
+        """Automatically detect classes from subdirectories"""
+        if not os.path.exists(self.data_dir):
+            raise FileNotFoundError(f"Directory not found: {self.data_dir}")
+        
+        # Get all subdirectories (these are the classes)
+        classes = sorted([
+            d for d in os.listdir(self.data_dir)
+            if os.path.isdir(os.path.join(self.data_dir, d))
+        ])
+        
+        if len(classes) == 0:
+            raise ValueError(f"No class subdirectories found in {self.data_dir}")
+        
+        return classes
     
     def __len__(self):
         return len(self.samples)
@@ -50,6 +68,48 @@ class HairDataset(Dataset):
             image = self.transform(image=image)['image']
         
         return image, label
+
+def get_num_classes(data_dir):
+    """
+    Get number of classes by detecting subdirectories in train split
+    
+    Args:
+        data_dir: Root data directory
+        
+    Returns:
+        int: Number of classes
+    """
+    train_dir = os.path.join(data_dir, 'train')
+    if not os.path.exists(train_dir):
+        raise FileNotFoundError(f"Training directory not found: {train_dir}")
+    
+    classes = sorted([
+        d for d in os.listdir(train_dir)
+        if os.path.isdir(os.path.join(train_dir, d))
+    ])
+    
+    return len(classes)
+
+def get_class_names(data_dir):
+    """
+    Get class names by detecting subdirectories in train split
+    
+    Args:
+        data_dir: Root data directory
+        
+    Returns:
+        list: Sorted list of class names
+    """
+    train_dir = os.path.join(data_dir, 'train')
+    if not os.path.exists(train_dir):
+        raise FileNotFoundError(f"Training directory not found: {train_dir}")
+    
+    classes = sorted([
+        d for d in os.listdir(train_dir)
+        if os.path.isdir(os.path.join(train_dir, d))
+    ])
+    
+    return classes
 
 def get_transforms(img_size=224, is_training=True, config=None):
     """Get augmentation pipeline"""
@@ -124,6 +184,9 @@ def create_dataloaders(data_dir, config):
     val_dataset = HairDataset(data_dir, 'val', val_transform)
     test_dataset = HairDataset(data_dir, 'test', val_transform)
     
+    # Print detected classes
+    print(f"\nDetected {len(train_dataset.classes)} classes: {train_dataset.classes}")
+    
     # Create train dataloader with optional balanced sampling
     if config.get('use_balanced_sampling', False):
         print("\nUsing balanced sampling for training...")
@@ -163,19 +226,28 @@ def create_dataloaders(data_dir, config):
     return train_loader, val_loader, test_loader
 
 
-# ==================== NEW FUNCTIONS FOR DATA SPLITTING ====================
+# ==================== DATA SPLITTING FUNCTIONS ====================
 
-def collect_image_paths(input_dir, classes=['straight', 'wavy', 'curly']):
+def collect_image_paths(input_dir, classes=None):
     """
     Collect all image paths from input directory
+    Classes are auto-detected if not provided
     
     Args:
         input_dir: Directory containing class subdirectories
-        classes: List of class names
+        classes: List of class names (auto-detected if None)
         
     Returns:
         dict: {class_name: [list of image paths]}
     """
+    # Auto-detect classes if not provided
+    if classes is None:
+        classes = sorted([
+            d for d in os.listdir(input_dir)
+            if os.path.isdir(os.path.join(input_dir, d))
+        ])
+        print(f"Auto-detected classes: {classes}")
+    
     image_data = {cls: [] for cls in classes}
     
     for class_name in classes:
@@ -239,13 +311,13 @@ def split_data(image_data, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, ran
     
     return splits
 
-def copy_files_to_split_dirs(splits, output_dir, classes=['straight', 'wavy', 'curly']):
+def copy_files_to_split_dirs(splits, output_dir, classes):
     """
     Copy files to train/val/test directory structure
     
     Args:
         splits: dict from split_data()
-        output_dir: Output directory (e.g., './data')
+        output_dir: Output directory (e.g., './data_hair_type')
         classes: List of class names
     """
     # Create directory structure
@@ -272,6 +344,7 @@ def prepare_dataset(input_dir, output_dir, train_ratio=0.7, val_ratio=0.15,
                    test_ratio=0.15, random_seed=42):
     """
     Complete pipeline to prepare dataset from input directory
+    Classes are automatically detected from subdirectories
     
     Args:
         input_dir: Source directory with class subdirectories
@@ -281,15 +354,14 @@ def prepare_dataset(input_dir, output_dir, train_ratio=0.7, val_ratio=0.15,
         test_ratio: Test set proportion
         random_seed: Random seed
     """
-    classes = ['straight', 'wavy', 'curly']
-    
     print("="*60)
-    print("PREPARING HAIR CLASSIFICATION DATASET")
+    print("PREPARING CLASSIFICATION DATASET")
     print("="*60)
     
-    # Step 1: Collect all image paths
-    print(f"\nStep 1: Collecting images from {input_dir}")
-    image_data = collect_image_paths(input_dir, classes)
+    # Step 1: Auto-detect classes and collect all image paths
+    print(f"\nStep 1: Auto-detecting classes and collecting images from {input_dir}")
+    image_data = collect_image_paths(input_dir, classes=None)  # Auto-detect
+    classes = list(image_data.keys())
     
     # Print statistics
     print("\nDataset statistics:")
@@ -297,7 +369,7 @@ def prepare_dataset(input_dir, output_dir, train_ratio=0.7, val_ratio=0.15,
     for class_name, paths in image_data.items():
         print(f"  {class_name}: {len(paths)} images")
         total_images += len(paths)
-    print(f"  Total: {total_images} images")
+    print(f"  Total: {total_images} images across {len(classes)} classes")
     
     if total_images == 0:
         print("\nError: No images found! Please check your input directory.")

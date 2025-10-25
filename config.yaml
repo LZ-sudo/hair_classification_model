@@ -1,49 +1,62 @@
-# Model
-model_name: "convnext_tiny_in22k" # deit_base_patch16_224, deit3_base_patch16_224, convnext_tiny, convnext_tiny_in22k
-num_classes: 3
-dropout: 0.15 # 0.15 for convnext_tiny_in22k, # 0.20 for convnext_tiny
+# ==================== TASK SELECTION ====================
+# Switch between different classification tasks by changing these paths
 
-# Data
-input_dir: "./input_pictures_processed"
-data_dir: "./data"
-img_size: 224
-batch_size: 24
-num_workers: 4
+# FOR HAIR TYPE CLASSIFICATION:
+# data_dir: './data_hair_type'              # Training data location
+# checkpoint_dir: './checkpoints_hair_type'  # Where to save model weights
+# input_dir: './input_pictures_hair_type'    # Raw images (for prepare_data.py)
 
-# Data splits
-train_split: 0.7
-val_split: 0.15
-test_split: 0.15
-random_seed: 42
+# FOR HAIR COLOR CLASSIFICATION (uncomment to use):
+data_dir: './data_hair_color'
+checkpoint_dir: './checkpoints_hair_color'
+input_dir: './input_pictures_hair_color'
 
-# Training
-epochs: 80  # CHANGED: More epochs
-learning_rate: 0.00005
-weight_decay: 0.01
-freeze_epochs: 12
+# NOTE: Classes are automatically detected from subdirectories in data_dir!
+# For example:
+#   data_hair_type/train/straight, wavy, curly → 3 classes: ['curly', 'straight', 'wavy']
+#   data_hair_color/train/black, brown, blonde → 3 classes: ['black', 'blonde', 'brown']
 
-# Testing
-test_model: "best_model.pth" # change weight file name, weights must be inside checkpoints/  
+# ==================== MODEL SETTINGS ====================
+model_name: "convnext_tiny.fb_in22k"  # Options: deit_base_patch16_224, deit3_base_patch16_224, 
+                                    #          convnext_tiny, convnext_tiny.fb_in22k
+dropout: 0.2                        # Dropout rate for classifier head
+img_size: 224                       # Input image size
 
-# Class imbalance handling 
-use_class_weights: true        # Use weighted loss
-use_balanced_sampling: false   # Alternative to class weights (pick one)
+# ==================== TRAINING SETTINGS ====================
+epochs: 80                          # Total training epochs
+freeze_epochs: 10                   # Epochs to freeze backbone (transfer learning)
+learning_rate: 0.00005              # Learning rate (5e-5)
+weight_decay: 0.01                  # Weight decay for regularization
+batch_size: 24                      # Batch size
+num_workers: 4                      # DataLoader workers
 
-# Advanced augmentation 
-use_mixup: true
-mixup_alpha: 0.2
-use_cutmix: true
-cutmix_alpha: 1.0
+# ==================== DATA PREPARATION ====================
+train_split: 0.7                    # 70% for training
+val_split: 0.15                     # 15% for validation
+test_split: 0.15                    # 15% for testing
+random_seed: 42                     # Random seed for reproducibility
 
-# Test-time augmentation 
-use_tta: true
-tta_augmentations: 5
+# ==================== DATA AUGMENTATION ====================
+# Horizontal flip
+aug_hflip: 0.5                      # Probability of horizontal flip
 
-# Augmentation
-aug_hflip: 0.5
-aug_rotate: 15
-aug_brightness: 0.5
+# Rotation
+aug_rotate: 15                      # Max rotation degrees
 
-# Checkpoints
-checkpoint_dir: "./checkpoints"
-save_best_only: true
+# Brightness/Contrast
+aug_brightness: 0.5                 # Probability of brightness/contrast adjustment
+
+# MixUp and CutMix
+use_mixup: true                     # Enable MixUp augmentation
+mixup_alpha: 0.2                    # MixUp alpha parameter
+use_cutmix: true                    # Enable CutMix augmentation
+cutmix_alpha: 1.0                   # CutMix alpha parameter
+
+# ==================== CLASS IMBALANCE HANDLING ====================
+use_class_weights: true             # Weight loss by inverse class frequency
+use_balanced_sampling: false        # Alternative: balance sampling instead of loss weighting
+
+# ==================== TESTING ====================
+test_model: "best_model.pth"        # Checkpoint filename to evaluate
+use_tta: true                       # Test-Time Augmentation
+tta_augmentations: 5                # Number of TTA augmentations

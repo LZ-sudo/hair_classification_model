@@ -1,12 +1,11 @@
-"""Training utilities"""
-
 import torch
 import torch.nn as nn
 from tqdm import tqdm
 import os
 import numpy as np
+from src.dataset import get_class_names
 
-def get_class_weights(train_loader, num_classes=3, device='cpu'):
+def get_class_weights(train_loader, num_classes, device='cpu', class_names=None):
     """
     Calculate class weights for imbalanced dataset
     
@@ -14,6 +13,7 @@ def get_class_weights(train_loader, num_classes=3, device='cpu'):
         train_loader: Training dataloader
         num_classes: Number of classes
         device: Device to put weights on
+        class_names: List of class names (optional, for display)
         
     Returns:
         torch.Tensor: Class weights
@@ -31,9 +31,9 @@ def get_class_weights(train_loader, num_classes=3, device='cpu'):
     
     # Print statistics
     print(f"\nClass distribution in training set:")
-    classes = ['straight', 'wavy', 'curly']
     for i, (count, weight) in enumerate(zip(class_counts, class_weights)):
-        print(f"  {classes[i]}: {int(count)} samples (weight: {weight:.3f})")
+        class_name = class_names[i] if class_names else f"class_{i}"
+        print(f"  {class_name}: {int(count)} samples (weight: {weight:.3f})")
     
     return class_weights.to(device)
 
@@ -88,6 +88,7 @@ def cutmix_data(x, y, alpha=1.0):
     cut_w = int(W * cut_rat)
     cut_h = int(H * cut_rat)
 
+    # Uniform center
     cx = np.random.randint(W)
     cy = np.random.randint(H)
 
@@ -96,112 +97,100 @@ def cutmix_data(x, y, alpha=1.0):
     bbx2 = np.clip(cx + cut_w // 2, 0, W)
     bby2 = np.clip(cy + cut_h // 2, 0, H)
 
+    # Apply cutmix
     x[:, :, bbx1:bbx2, bby1:bby2] = x[index, :, bbx1:bbx2, bby1:bby2]
     
-    # Adjust lambda to match actual area
+    # Adjust lambda to match box area
     lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (W * H))
+    
     y_a, y_b = y, y[index]
     return x, y_a, y_b, lam
 
-def mixup_criterion(criterion, pred, y_a, y_b, lam):
+def train_epoch(model, train_loader, criterion, optimizer, device, config):
     """
-    Loss function for mixup/cutmix
-    
-    Args:
-        criterion: Loss function
-        pred: Predictions
-        y_a: First set of labels
-        y_b: Second set of labels
-        lam: Mixing coefficient
-        
-    Returns:
-        Mixed loss
-    """
-    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
-
-def train_epoch(model, dataloader, criterion, optimizer, device, config):
-    """
-    Train for one epoch with optional mixup/cutmix
+    Train for one epoch
     
     Args:
         model: Model to train
-        dataloader: Training dataloader
+        train_loader: Training dataloader
         criterion: Loss function
         optimizer: Optimizer
         device: Device
-        config: Configuration dict
+        config: Config dict with augmentation settings
         
     Returns:
-        Average loss, accuracy
+        Average loss and accuracy
     """
     model.train()
     running_loss = 0.0
     correct = 0
     total = 0
     
-    use_mixup = config.get('use_mixup', False)
-    use_cutmix = config.get('use_cutmix', False)
-    mixup_alpha = config.get('mixup_alpha', 0.2)
-    cutmix_alpha = config.get('cutmix_alpha', 1.0)
-    
-    pbar = tqdm(dataloader, desc='Training')
+    pbar = tqdm(train_loader, desc='Training')
     for images, labels in pbar:
         images, labels = images.to(device), labels.to(device)
         
-        # Apply mixup or cutmix randomly
-        if use_mixup and use_cutmix:
-            # 50% chance for each
-            if np.random.rand() < 0.5:
-                images, labels_a, labels_b, lam = mixup_data(images, labels, mixup_alpha)
-            else:
-                images, labels_a, labels_b, lam = cutmix_data(images, labels, cutmix_alpha)
+        # Apply MixUp or CutMix
+        use_mixup = config.get('use_mixup', False) and np.random.rand() > 0.5
+        use_cutmix = config.get('use_cutmix', False) and np.random.rand() > 0.5
+        
+        if use_mixup:
+            images, labels_a, labels_b, lam = mixup_data(
+                images, labels, alpha=config.get('mixup_alpha', 0.2)
+            )
             
-            optimizer.zero_grad()
+            # Forward pass
             outputs = model(images)
-            loss = mixup_criterion(criterion, outputs, labels_a, labels_b, lam)
-            
-        elif use_mixup:
-            images, labels_a, labels_b, lam = mixup_data(images, labels, mixup_alpha)
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = mixup_criterion(criterion, outputs, labels_a, labels_b, lam)
+            loss = lam * criterion(outputs, labels_a) + (1 - lam) * criterion(outputs, labels_b)
             
         elif use_cutmix:
-            images, labels_a, labels_b, lam = cutmix_data(images, labels, cutmix_alpha)
-            optimizer.zero_grad()
+            images, labels_a, labels_b, lam = cutmix_data(
+                images, labels, alpha=config.get('cutmix_alpha', 1.0)
+            )
+            
+            # Forward pass
             outputs = model(images)
-            loss = mixup_criterion(criterion, outputs, labels_a, labels_b, lam)
+            loss = lam * criterion(outputs, labels_a) + (1 - lam) * criterion(outputs, labels_b)
             
         else:
             # Standard training
-            optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
         
+        # Backward pass
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         
+        # Statistics
         running_loss += loss.item()
         _, predicted = outputs.max(1)
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
         
-        pbar.set_postfix({'loss': running_loss/(pbar.n+1), 'acc': 100.*correct/total})
+        # Update progress bar
+        pbar.set_postfix({
+            'loss': f'{running_loss/len(pbar):.3f}',
+            'acc': f'{100.*correct/total:.2f}%'
+        })
     
-    return running_loss / len(dataloader), 100. * correct / total
+    epoch_loss = running_loss / len(train_loader)
+    epoch_acc = 100. * correct / total
+    
+    return epoch_loss, epoch_acc
 
-def validate(model, dataloader, criterion, device):
+def validate(model, val_loader, criterion, device):
     """
     Validate model
     
     Args:
         model: Model to validate
-        dataloader: Validation dataloader
+        val_loader: Validation dataloader
         criterion: Loss function
         device: Device
         
     Returns:
-        Average loss, accuracy
+        Average loss and accuracy
     """
     model.eval()
     running_loss = 0.0
@@ -209,8 +198,10 @@ def validate(model, dataloader, criterion, device):
     total = 0
     
     with torch.no_grad():
-        for images, labels in tqdm(dataloader, desc='Validation'):
+        pbar = tqdm(val_loader, desc='Validation')
+        for images, labels in pbar:
             images, labels = images.to(device), labels.to(device)
+            
             outputs = model(images)
             loss = criterion(outputs, labels)
             
@@ -218,10 +209,18 @@ def validate(model, dataloader, criterion, device):
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
+            
+            pbar.set_postfix({
+                'loss': f'{running_loss/len(pbar):.3f}',
+                'acc': f'{100.*correct/total:.2f}%'
+            })
     
-    return running_loss / len(dataloader), 100. * correct / total
+    epoch_loss = running_loss / len(val_loader)
+    epoch_acc = 100. * correct / total
+    
+    return epoch_loss, epoch_acc
 
-def save_checkpoint(model, optimizer, epoch, val_acc, save_path):
+def save_checkpoint(model, optimizer, epoch, val_acc, checkpoint_dir, filename='best_model.pth'):
     """
     Save model checkpoint
     
@@ -230,13 +229,24 @@ def save_checkpoint(model, optimizer, epoch, val_acc, save_path):
         optimizer: Optimizer state
         epoch: Current epoch
         val_acc: Validation accuracy
-        save_path: Path to save checkpoint
+        checkpoint_dir: Directory to save checkpoint
+        filename: Checkpoint filename
     """
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # Create checkpoint directory if it doesn't exist
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    checkpoint_path = os.path.join(checkpoint_dir, filename)
+    
     torch.save({
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
-        'val_acc': val_acc
-    }, save_path)
-    print(f"✓ Checkpoint saved to {save_path}")
+        'val_acc': val_acc,
+    }, checkpoint_path)
+    
+    print(f"✓ Checkpoint saved: {checkpoint_path}")
+
+
+
+
+

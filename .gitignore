@@ -1,9 +1,11 @@
 /data_hair_type
+/data_hair_color
 /input_pictures
 /input_pictures_processed_hair_type
-/input_pictures_processed_hair_color
+/input_pictures_color_processed
 /irl_pictures_test
 /irl_pictures_test_processed
-/myenv
+/.venv
 /src/__pycache__
 /checkpoints_hair_type
+/checkpoints_hair_color
