@@ -1,6 +1,10 @@
-# Hair Type Classification
+# Hair Classification System
 
-A deep learning system for classifying hair types into three categories: **straight**, **wavy**, and **curly**. This project uses state-of-the-art vision transformer and convolutional neural network architectures with transfer learning to achieve high accuracy on segmented hair images.
+A deep learning system for classifying **hair attributes** including:
+- **Hair Type**: straight, wavy, curly
+- **Hair Color**: [list your color categories]
+
+This project uses state-of-the-art vision transformer and convolutional neural network architectures with transfer learning to achieve high accuracy on segmented hair images. The system features an **agnostic category recognition approach**, allowing flexible classification of different hair attributes using the same underlying architecture.
 
 ## 📋 Table of Contents
 
@@ -15,20 +19,24 @@ A deep learning system for classifying hair types into three categories: **strai
   - [Testing](#testing)
   - [Inference](#inference)
 - [Project Structure](#project-structure)
-- [Configuration](#configuration)
 - [Citations](#citations)
 - [License](#license)
 
 ## ✨ Features
 
-- **Multiple Architecture Support**: DeiT, DeiT-III, ConvNeXt models
+- **Multi-Attribute Classification**: 
+  - Hair type classification (straight, wavy, curly)
+  - Hair color classification (blonde, brown, black, red, etc.)
+  - Extensible to other hair attributes
+- **Agnostic Category Recognition**: Unified architecture adaptable to different classification tasks
+- **Modern Architecture Support**: ConvNeXt models
 - **Transfer Learning**: Leverages ImageNet-1k and ImageNet-22k pre-trained weights
 - **Advanced Training Techniques**: 
   - Class imbalance handling (weighted loss, balanced sampling)
   - MixUp and CutMix augmentation
   - Test-Time Augmentation (TTA)
-- **Modular Codebase**: Easy to extend and experiment with
-- **Production Ready**: Simple inference API for deployment
+- **Modular Codebase**: Easy to extend with new hair attributes
+- **Production Ready**: Simple inference API with separate classifiers for each attribute
 
 ## 🔧 Installation
 
@@ -37,7 +45,23 @@ A deep learning system for classifying hair types into three categories: **strai
 - Python 3.8 or higher
 - CUDA-compatible GPU (recommended for training)
 
-### Step 1: CUDA Support (GPU Users)
+### Step 1: Clone repo  CUDA Support (GPU Users)
+
+```bash
+# Clone the repository
+git clone https://github.com/LZ-sudo/hair_classification_model.git
+cd hair_classification_model
+```
+
+### Step 2: Virtual env and CUDA Support (GPU Users)
+
+```bash
+# Create python virtual environment
+python -m venv .venv
+
+# Activate python virtual environment
+.venv/Scripts/activate
+```
 
 **IMPORTANT**: If you have a CUDA-enabled GPU, install PyTorch with CUDA support **before** installing other dependencies.
 
@@ -61,17 +85,13 @@ To check your CUDA version:
 nvidia-smi
 ```
 
-### Step 2: Install Dependencies
+### Step 3: Install Dependencies
 ```bash
-# Clone the repository
-git clone https://github.com/LZ-sudo/hair_classification_model.git
-cd hair_classification_model
-
 # Install remaining dependencies
 pip install -r requirements.txt
 ```
 
-### Step 3: Verify Installation
+### Step 4: Verify Installation
 ```bash
 python -c "import torch; print('CUDA available:', torch.cuda.is_available())"
 ```
@@ -172,9 +192,9 @@ All models are loaded via the [timm (PyTorch Image Models)](https://github.com/h
 
 ### Data Preparation
 
-Organize your segmented hair images in the following structure:
+Organize your segmented hair images in the following structure (e.g hair color):
 ```
-input_pictures_processed/
+input_pictures_color_processed/
 ├── straight/
 │   ├── img001.jpg
 │   ├── img002.jpg
@@ -190,8 +210,14 @@ input_pictures_processed/
 ```
 
 Then split the data into train/validation/test sets:
+
+Hair color data
 ```bash
-python prepare_data.py
+python prepare_data.py --input_dir input_pictures_color_processed --output_dir data_hair_color
+```
+Hair type data
+```bash
+python prepare_data.py --input_dir input_pictures_type_processed --output_dir data_hair_type
 ```
 
 This will create a `data/` directory with the following structure:
@@ -217,19 +243,45 @@ data/
 ```yaml
 # Example for ConvNeXt-Tiny with ImageNet-22k
 model_name: "convnext_tiny_in22k"
-num_classes: 3
 dropout: 0.2
 learning_rate: 0.00005
 epochs: 80
 # ... see config.yaml for full options
 ```
 
-2. **Train the model**:
+### Training
+
+The system uses an **agnostic category recognition approach**, meaning you can train the same architecture on different classification tasks by simply:
+
+1. Organizing your data by category
+2. Updating the configuration
+3. Running the training script
+
+**Example: Training for Hair Type**
+```yaml
+# config.yaml
+data_dir: './data_hair_type'              # Training data location
+checkpoint_dir: './checkpoints_hair_type'  # Where to save model weights
+input_dir: './input_pictures_hair_type'    # Raw images (for prepare_data.py)
+# ... other settings
+```
+
 ```bash
 python train_model.py
 ```
 
-Training progress will be displayed in the console, and the best model will be saved to the `checkpoints/` directory.
+**Example: Training for Hair Color**
+```yaml
+# config.yaml
+data_dir: './data_hair_color'
+checkpoint_dir: './checkpoints_hair_color'
+input_dir: './input_pictures_hair_color'
+# ... other settings
+```
+
+```bash
+python train_model.py
+```
 
 ### Testing
 
@@ -255,20 +307,12 @@ tta_augmentations: 5
 
 **Inference**:
 
-For deit_base/deit3_base models:
-
-```bash
-python classify_image_deit_base.py --folder path/to/images/ --checkpoint checkpoints/deit3base_best_model.pth # image batch
-
-python classify_image_deit_base.py --image image.jpg --checkpoint checkpoints/deit3base_best_model.pth # single image
-```
-
 For convnext_tiny/convnext_tiny_in22k models:
 
 ```bash
-python classify_image_convnext_tiny.py --folder path/to/images/ --checkpoint checkpoints/convnext_tiny_best_model.pth # image batch
+python classify_image_convnext.py --folder path/to/images/ # image batch
 
-python classify_image_convnext_tiny.py --image image.jpg --checkpoint checkpoints/convnext_tiny_best_model.pth # single image
+python classify_image_convnext.py --image image.jpg # single image
 ```
 
 ## 📁 Project Structure
@@ -280,7 +324,12 @@ hair_classification_model/
 ├── config.yaml                       # Configuration file
 ├── .gitignore
 │
-├── data/                             # Generated by prepare_data.py
+├── data_hair_color/                  # Generated by prepare_data.py, for data on hair colors
+│   ├── train/
+│   ├── val/
+│   └── test/
+│
+├── data_hair_type/                   # Generated by prepare_data.py, for data on hair types
 │   ├── train/
 │   ├── val/
 │   └── test/
@@ -297,54 +346,17 @@ hair_classification_model/
 │   ├── train.py                      # Training utilities
 │   └── predict.py                    # Inference utilities
 │
-├── checkpoints/                      # Saved model weights
+├── checkpoints_hair_color/           # Saved model weights for hair color classification training
+│   └── best_model.pth
+├── checkpoints_hair_type/            # Saved model weights for hair type classification training
 │   └── best_model.pth
 │
-├── prepare_data.py                   # Split data into train/val/test
-├── train_model.py                    # Main training script
-├── test_model.py                     # Evaluation script
-└── classify_image_convnext_tiny.py   # Inference script (convnext_tiny/convnext_tiny_in22k)
-└── classify_image_deit_base.py       # Inference script (deit_base/deit3_base)
-```
-
-## ⚙️ Configuration
-
-Key parameters in `config.yaml`:
-
-### Model Settings
-```yaml
-model_name: "convnext_tiny_in22k"  # Model architecture
-num_classes: 3                      # Number of hair types
-dropout: 0.2                        # Dropout rate
-```
-
-### Training Settings
-```yaml
-epochs: 80                          # Number of training epochs
-learning_rate: 0.00005              # Learning rate
-weight_decay: 0.01                  # Weight decay for regularization
-batch_size: 24                      # Batch size
-freeze_epochs: 10                   # Epochs to freeze backbone
-```
-
-### Data Augmentation
-```yaml
-use_mixup: true                     # Enable MixUp augmentation
-mixup_alpha: 0.2                    # MixUp alpha parameter
-use_cutmix: true                    # Enable CutMix augmentation
-cutmix_alpha: 1.0                   # CutMix alpha parameter
-```
-
-### Class Imbalance Handling
-```yaml
-use_class_weights: true             # Use weighted loss
-use_balanced_sampling: false        # Alternative: balanced sampling
-```
-
-### Test-Time Augmentation
-```yaml
-use_tta: true                       # Enable TTA during testing
-tta_augmentations: 5                # Number of TTA transforms
+├── prepare_data.py                         # Split data into train/val/test
+├── train_model.py                          # Main training script
+├── test_model.py                           # Evaluation script
+└── classify_image_convnext_hair_color.py   # Inference script for hair color classification (convnext_tiny/convnext_tiny_in22k)
+└── classify_image_convnext_hair_type.py    # Inference script for hair type classification (convnext_tiny/convnext_tiny_in22k)
+└── classify_image_convnext.py              # Inference script for both hair type and hair color (convnext_tiny/convnext_tiny_in22k)
 ```
 
 ## 📚 Citations
