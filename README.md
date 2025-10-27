@@ -2,7 +2,7 @@
 
 A deep learning system for classifying **hair attributes** including:
 - **Hair Type**: straight, wavy, curly
-- **Hair Color**: [list your color categories]
+- **Hair Color**: black, blonde, brown
 
 This project uses state-of-the-art vision transformer and convolutional neural network architectures with transfer learning to achieve high accuracy on segmented hair images. The system features an **agnostic category recognition approach**, allowing flexible classification of different hair attributes using the same underlying architecture.
 
