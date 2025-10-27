@@ -1,9 +1,5 @@
 # Hair Classification System
 
-A deep learning system for classifying **hair attributes** including:
-- **Hair Type**: straight, wavy, curly
-- **Hair Color**: black, blonde, brown
-
 This project uses state-of-the-art vision transformer and convolutional neural network architectures with transfer learning to achieve high accuracy on segmented hair images. The system features an **agnostic category recognition approach**, allowing flexible classification of different hair attributes using the same underlying architecture.
 
 ## 📋 Table of Contents
@@ -26,7 +22,7 @@ This project uses state-of-the-art vision transformer and convolutional neural n
 
 - **Multi-Attribute Classification**: 
   - Hair type classification (straight, wavy, curly)
-  - Hair color classification (blonde, brown, black, red, etc.)
+  - Hair color classification (blonde, brown, black)
   - Extensible to other hair attributes
 - **Agnostic Category Recognition**: Unified architecture adaptable to different classification tasks
 - **Modern Architecture Support**: ConvNeXt models
@@ -304,7 +300,6 @@ tta_augmentations: 5
 
 ### Inference
 
-
 **Inference**:
 
 For convnext_tiny/convnext_tiny_in22k models:
@@ -388,10 +383,6 @@ If you use this code or models in your research, please cite the relevant papers
 Kavya Sree B. (2023). Hair Type Dataset. Kaggle. 
 https://www.kaggle.com/datasets/kavyasreeb/hair-type-dataset
 ```
-
-## 📄 License
-
-[Add your license here - MIT, Apache 2.0, etc.]
 
 ## 🤝 Contributing
 
